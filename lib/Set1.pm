@@ -4,7 +4,11 @@ use v5.22;
 use strictures 2;
 use MIME::Base64;
 use base 'Exporter';
-our @EXPORT_OK = qw (hex_to_base64 fixed_xor);
+our @EXPORT_OK = qw (hex_to_base64 fixed_xor break_single_byte_xor);
+
+open  DIC, 'common_words.txt';
+my %dic;
+while (<DIC>) {chomp;$dic{$_} = 1}
 
 sub hex_to_base64 {
     my ($hex_str) = @_;
@@ -27,3 +31,52 @@ sub fixed_xor {
     return $res;
 
 }
+
+sub break_single_byte_xor {
+    return unless @_;
+
+    my %args = @_;
+    my @res;
+    push @res,get_plain_text($args{cyphertext}) if $args{cyphertext};
+    if ($args{filename}) {
+	open my $fh, $args{filename} or die;
+	my $p_text;
+	while (<$fh>) {
+	    chomp;
+	    $p_text = get_plain_text($_);
+	    push @res,$p_text if $p_text;
+	}
+
+    }
+    @res = sort {split(/ /, $b) cmp split(/ /, $a)} @res;
+
+    return $res[0];
+}
+
+sub score {
+    my ($plain_text) = @_;
+    my $plain_text_score = 0;
+    my  @words = split / /, $plain_text;
+    for (@words) {$plain_text_score +=  $dic{$_} if $dic{$_}}
+    return $plain_text_score;
+
+}
+
+sub get_plain_text {
+    my ($str1) = @_;
+    my ($cdec_text, $cdec_text_score,$text);
+    my $text_score = 0;
+    for (0 .. 128) {
+	$cdec_text = pack('H*',fixed_xor($str1,sprintf('%02x',$_)x int((length($str1)/2))));
+	$cdec_text_score = score($cdec_text);
+	if ($cdec_text_score > $text_score) {
+	    $text_score = $cdec_text_score;
+	    $text = $cdec_text;
+
+	}
+
+    }
+    return $text;
+}
+
+1;
