@@ -2,9 +2,10 @@ package Set1;
 
 use v5.22;
 use strictures 2;
+use Carp;
 use MIME::Base64;
 use base 'Exporter';
-our @EXPORT_OK = qw (hex_to_base64 fixed_xor break_single_byte_xor);
+our @EXPORT_OK = qw (hex_to_base64 fixed_xor break_single_byte_xor repeating_key_xor);
 
 open  DIC, 'common_words.txt';
 my %dic;
@@ -77,6 +78,23 @@ sub get_plain_text {
 
     }
     return $text;
+}
+
+sub repeating_key_xor {
+    my %args = @_;
+    croak ' repeating_key_xor Needs two arguments: plaintext and key'
+	unless (defined ($args{plaintext}) and defined $args{key});
+    my @key = split(//, $args{key});
+    my $key_len = scalar(@key);
+    my @plaintext =  split(//,$args{plaintext});
+    my $res = '';
+    for my $i ( 0 .. @plaintext - 1) {
+	$res = $res .  sprintf '%02x',ord($plaintext[$i]) ^ ord( $key[$i % $key_len]);
+
+
+    }
+    return $res;
+
 }
 
 1;
